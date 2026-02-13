@@ -8,12 +8,35 @@ export const dynamic = "force-dynamic";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const AGENT_EMOJIS: Record<string, string> = {
-  main: "🧠",
-  research: "🔬",
-  content: "✍️",
-  devops: "⚙️",
-  "chief-of-staff": "📋",
-  todos: "✅",
+  charlie: "🐀",
+  dennis: "⭐",
+  mac: "🥋",
+  dee: "🦅",
+  frank: "🗑️",
+  "the-waitress": "📝",
+  // Legacy names
+  main: "🐀",
+  research: "🥋",
+  content: "🦅",
+  devops: "🗑️",
+  "chief-of-staff": "⭐",
+  todos: "📝",
+};
+
+const AGENT_ROLES: Record<string, string> = {
+  charlie: "General • Coding • Wild Card",
+  dennis: "Chief of Staff • Delegation",
+  mac: "Research • Security • Intel",
+  dee: "Content • Blogs • Writing",
+  frank: "DevOps • Infrastructure",
+  "the-waitress": "Todos • Task Capture",
+  // Legacy names
+  main: "General • Coding • Wild Card",
+  research: "Research • Security • Intel",
+  content: "Content • Blogs • Writing",
+  devops: "DevOps • Infrastructure",
+  "chief-of-staff": "Chief of Staff • Delegation",
+  todos: "Todos • Task Capture",
 };
 
 export async function GET() {
@@ -51,6 +74,7 @@ export async function GET() {
         id,
         name: a.name || a.id,
         emoji: AGENT_EMOJIS[id] || "🤖",
+        role: AGENT_ROLES[id] || "",
         model: a.model || defaultModel,
         workspace: a.workspace || "",
         status: "online" as const,

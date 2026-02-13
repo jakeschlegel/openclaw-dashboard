@@ -29,7 +29,9 @@ export default function AgentCard({ agent }: { agent: Agent }) {
             <h3 className="text-[14px] font-semibold text-text-primary group-hover:text-accent transition-colors">
               {agent.name}
             </h3>
-            <p className="text-[12px] text-text-secondary font-mono">{agent.model || "unknown"}</p>
+            {agent.role && (
+              <p className="text-[11px] text-text-secondary mt-0.5">{agent.role}</p>
+            )}
           </div>
         </div>
         <StatusBadge status={agent.status} />

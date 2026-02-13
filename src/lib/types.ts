@@ -2,6 +2,7 @@ export interface Agent {
   id: string;
   name: string;
   emoji?: string;
+  role?: string;
   model?: string;
   status: "online" | "offline";
   workspace?: string;

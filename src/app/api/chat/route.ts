@@ -5,6 +5,25 @@ export const dynamic = "force-dynamic";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+function extractAssistantReply(data: any): string | null {
+  const messages = data?.result?.details?.messages;
+  if (!Array.isArray(messages)) return null;
+
+  const assistantMsgs = messages.filter((m: any) => m.role === "assistant");
+  if (assistantMsgs.length === 0) return null;
+
+  const lastMsg = assistantMsgs[assistantMsgs.length - 1];
+  if (typeof lastMsg.content === "string") return lastMsg.content;
+  if (Array.isArray(lastMsg.content)) {
+    return lastMsg.content
+      .filter((c: any) => c.type === "text")
+      .map((c: any) => c.text)
+      .join("")
+      .trim();
+  }
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { agentId, message } = await request.json();
@@ -16,7 +35,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Use the gateway /tools/invoke endpoint to spawn a session
+    // Spawn a session via the gateway
     const data: any = await gateway({
       method: "POST",
       path: "/tools/invoke",
@@ -35,7 +54,7 @@ export async function POST(request: NextRequest) {
       // Poll for the result (up to 90 seconds)
       const deadline = Date.now() + 90000;
       while (Date.now() < deadline) {
-        await new Promise((r) => setTimeout(r, 3000));
+        await new Promise((r) => setTimeout(r, 2000));
 
         try {
           const history: any = await gateway({
@@ -45,63 +64,21 @@ export async function POST(request: NextRequest) {
               tool: "sessions_history",
               args: {
                 sessionKey,
-                limit: 5,
+                limit: 10,
                 includeTools: false,
               },
             },
           });
 
-          if (history?.ok && history?.result?.content) {
-            // Parse the content to find assistant messages
-            const content = history.result.content;
-            let text = "";
-
-            if (Array.isArray(content)) {
-              for (const c of content) {
-                if (c.type === "text") text += c.text;
-              }
-            } else if (typeof content === "string") {
-              text = content;
-            }
-
-            // Try to parse as JSON array of messages
-            try {
-              const messages = JSON.parse(text);
-              if (Array.isArray(messages)) {
-                const assistantMsgs = messages.filter(
-                  (m: any) => m.role === "assistant"
-                );
-                if (assistantMsgs.length > 0) {
-                  const lastMsg = assistantMsgs[assistantMsgs.length - 1];
-                  let reply = "";
-                  if (typeof lastMsg.content === "string") {
-                    reply = lastMsg.content;
-                  } else if (Array.isArray(lastMsg.content)) {
-                    reply = lastMsg.content
-                      .filter((c: any) => c.type === "text")
-                      .map((c: any) => c.text)
-                      .join("");
-                  }
-                  if (reply) {
-                    return NextResponse.json({
-                      response: reply,
-                      agentId,
-                    });
-                  }
-                }
-              }
-            } catch {
-              // Not JSON, check if the session is done some other way
-              if (text && text.length > 10) {
-                return NextResponse.json({
-                  response: text,
-                  agentId,
-                });
-              }
-            }
+          const reply = extractAssistantReply(history);
+          if (reply) {
+            return NextResponse.json({
+              response: reply,
+              agentId,
+            });
           }
         } catch {
-          // Session might not be ready yet, keep polling
+          // Session might not be ready yet
         }
       }
 

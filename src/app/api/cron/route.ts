@@ -8,7 +8,6 @@ export const dynamic = "force-dynamic";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 function mapJob(job: any) {
-  // schedule can be an object { kind, expr, tz } or a plain string
   const sched = job.schedule;
   const scheduleExpr =
     typeof sched === "string" ? sched : sched?.expr || String(sched);
@@ -16,7 +15,6 @@ function mapJob(job: any) {
 
   const state: any = job.state || {};
 
-  // Map lastStatus: openclaw uses "ok"/"error", dashboard expects "success"/"failure"
   let lastResult: string | null = null;
   if (state.lastStatus === "ok") lastResult = "success";
   else if (state.lastStatus === "error") lastResult = "failure";
@@ -50,15 +48,34 @@ function mapJob(job: any) {
 
 export { mapJob };
 
-export async function GET() {
+async function loadCronJobs(): Promise<any[]> {
+  // Try local file first
   try {
     const cronPath = join(homedir(), ".openclaw", "cron", "jobs.json");
     const raw = await readFile(cronPath, "utf-8");
     const data = JSON.parse(raw);
+    return data.jobs || [];
+  } catch {
+    // Fall back to env var (for Railway)
+    const envRaw = process.env.OPENCLAW_CRON_JSON;
+    if (envRaw) {
+      try {
+        const data = JSON.parse(envRaw);
+        return data.jobs || [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }
+}
 
-    const jobs = (data.jobs || []).map(mapJob);
+export { loadCronJobs };
 
-    return NextResponse.json(jobs);
+export async function GET() {
+  try {
+    const jobs = await loadCronJobs();
+    return NextResponse.json(jobs.map(mapJob));
   } catch (error) {
     console.error("Failed to fetch cron jobs:", error);
     return NextResponse.json([], { status: 200 });

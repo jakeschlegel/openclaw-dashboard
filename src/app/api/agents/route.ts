@@ -14,7 +14,6 @@ const AGENT_EMOJIS: Record<string, string> = {
   dee: "🦅",
   frank: "🗑️",
   cricket: "🦗",
-  // Legacy names
   main: "🐀",
   research: "🥋",
   content: "🦅",
@@ -30,7 +29,6 @@ const AGENT_ROLES: Record<string, string> = {
   dee: "Content • Blogs • Writing",
   frank: "DevOps • Infrastructure",
   cricket: "Todos • Task Capture",
-  // Legacy names
   main: "General • Coding • Wild Card",
   research: "Research • Security • Intel",
   content: "Content • Blogs • Writing",
@@ -39,34 +37,79 @@ const AGENT_ROLES: Record<string, string> = {
   todos: "Todos • Task Capture",
 };
 
-export async function GET() {
+async function getConfigFromFile(): Promise<any | null> {
   try {
     const home = homedir();
     const configPath = join(home, ".openclaw", "openclaw.json");
     const raw = await readFile(configPath, "utf-8");
-    const config = JSON.parse(raw);
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function getConfigFromEnv(): any | null {
+  const raw = process.env.OPENCLAW_AGENTS_JSON;
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+async function getCronCountsFromFile(): Promise<Record<string, number>> {
+  try {
+    const cronPath = join(homedir(), ".openclaw", "cron", "jobs.json");
+    const cronRaw = await readFile(cronPath, "utf-8");
+    const cronData = JSON.parse(cronRaw);
+    const counts: Record<string, number> = {};
+    for (const job of cronData.jobs || []) {
+      const agentId = job.agentId || "main";
+      counts[agentId] = (counts[agentId] || 0) + 1;
+    }
+    return counts;
+  } catch {
+    return {};
+  }
+}
+
+function getCronCountsFromEnv(): Record<string, number> {
+  const raw = process.env.OPENCLAW_CRON_JSON;
+  if (!raw) return {};
+  try {
+    const data = JSON.parse(raw);
+    const counts: Record<string, number> = {};
+    for (const job of data.jobs || []) {
+      const agentId = job.agentId || "main";
+      counts[agentId] = (counts[agentId] || 0) + 1;
+    }
+    return counts;
+  } catch {
+    return {};
+  }
+}
+
+export async function GET() {
+  try {
+    // Try local file first, then env var fallback (for Railway)
+    const config = (await getConfigFromFile()) || getConfigFromEnv();
+    if (!config) {
+      return NextResponse.json([], { status: 200 });
+    }
+
     const agents = config.agents?.list || [];
     const defaultModel = config.agents?.defaults?.model?.primary || "unknown";
 
-    // Get active channels from config
     const channelEntries = config.channels || {};
     const activeChannels = Object.entries(channelEntries)
       .filter(([, v]: [string, any]) => v && v.enabled !== false)
       .map(([k]) => k);
 
-    // Count cron jobs per agent
-    let cronCounts: Record<string, number> = {};
-    try {
-      const cronPath = join(home, ".openclaw", "cron", "jobs.json");
-      const cronRaw = await readFile(cronPath, "utf-8");
-      const cronData = JSON.parse(cronRaw);
-      for (const job of cronData.jobs || []) {
-        const agentId = job.agentId || "main";
-        cronCounts[agentId] = (cronCounts[agentId] || 0) + 1;
-      }
-    } catch {
-      // No cron file - fine
-    }
+    const cronCounts = {
+      ...(await getCronCountsFromFile()),
+      ...getCronCountsFromEnv(),
+    };
 
     const result = agents.map((a: Record<string, any>) => {
       const id = a.id || a.name;

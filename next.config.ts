@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Trust x-forwarded headers from proxy/tunnel
+  serverExternalPackages: [],
 };
 
 export default nextConfig;

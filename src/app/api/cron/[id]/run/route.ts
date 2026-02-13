@@ -14,8 +14,11 @@ export async function POST(
     return NextResponse.json(data);
   } catch (error) {
     console.error("Failed to run cron job:", error);
+    // Return a more graceful error - the gateway might not support this endpoint
     return NextResponse.json(
-      { error: "Failed to run cron job" },
+      {
+        error: "Failed to trigger cron job. The OpenClaw gateway may not be reachable.",
+      },
       { status: 502 }
     );
   }

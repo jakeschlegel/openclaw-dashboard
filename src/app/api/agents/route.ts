@@ -13,14 +13,14 @@ const AGENT_EMOJIS: Record<string, string> = {
   mac: "🥋",
   dee: "🦅",
   frank: "🗑️",
-  "the-waitress": "📝",
+  cricket: "🦗",
   // Legacy names
   main: "🐀",
   research: "🥋",
   content: "🦅",
   devops: "🗑️",
   "chief-of-staff": "⭐",
-  todos: "📝",
+  todos: "🦗",
 };
 
 const AGENT_ROLES: Record<string, string> = {
@@ -29,7 +29,7 @@ const AGENT_ROLES: Record<string, string> = {
   mac: "Research • Security • Intel",
   dee: "Content • Blogs • Writing",
   frank: "DevOps • Infrastructure",
-  "the-waitress": "Todos • Task Capture",
+  cricket: "Todos • Task Capture",
   // Legacy names
   main: "General • Coding • Wild Card",
   research: "Research • Security • Intel",

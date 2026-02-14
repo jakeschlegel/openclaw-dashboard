@@ -77,8 +77,27 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (data?.ok && data?.result?.details?.childSessionKey) {
-      const sessionKey = data.result.details.childSessionKey;
+    // Log the full response for debugging
+    console.log("Spawn response:", JSON.stringify(data, null, 2)?.slice(0, 2000));
+
+    // Try to find childSessionKey in various response shapes
+    const sessionKey = data?.result?.details?.childSessionKey 
+      || data?.result?.childSessionKey
+      || data?.details?.childSessionKey
+      || data?.childSessionKey;
+
+    // Also check if the response already contains the reply directly
+    const directReply = extractAssistantReply(data);
+    if (directReply) {
+      return NextResponse.json({ response: directReply, agentId });
+    }
+
+    // Check if there's content in the result that IS the reply
+    if (data?.result?.content && typeof data.result.content === "string") {
+      return NextResponse.json({ response: data.result.content, agentId });
+    }
+
+    if (sessionKey) {
 
       // Poll for the result (up to 90 seconds)
       const deadline = Date.now() + 90000;
@@ -114,7 +133,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ response: "Message sent to agent.", agentId });
+    // If we get here, the spawn didn't return expected data
+    console.error("Unexpected spawn response shape — no sessionKey found");
+    return NextResponse.json({ 
+      response: "Agent is processing your request. If no response appears, the agent may be busy — try again in a moment.",
+      agentId,
+    });
   } catch (error) {
     console.error("Chat API error:", error);
     return NextResponse.json(

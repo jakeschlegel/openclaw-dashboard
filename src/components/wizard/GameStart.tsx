@@ -46,7 +46,7 @@ export function GameStart() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Deploy failed");
       setPhase("error");
-      arcadeSound?.errorBuzz();
+      arcadeSound?.error();
     }
   }, [state]);
 

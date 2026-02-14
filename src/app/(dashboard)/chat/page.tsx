@@ -31,6 +31,18 @@ function ChatContent() {
 
   useEffect(() => { scrollToBottom(); }, [messages]);
 
+  // Map role names to agent IDs for quest board integration
+  const ROLE_TO_AGENT: Record<string, string> = {
+    coding: "charlie",
+    research: "mac",
+    "chief-of-staff": "dennis",
+    content: "dee",
+    devops: "frank",
+    security: "mac",
+    data: "charlie",
+    creative: "dee",
+  };
+
   useEffect(() => {
     async function fetchAgents() {
       try {
@@ -40,10 +52,18 @@ function ChatContent() {
           const agentList = Array.isArray(data) ? data : data.agents || [];
           setAgents(agentList);
           const preselect = searchParams.get("agent");
-          if (preselect && agentList.some((a: Agent) => a.id === preselect)) {
-            setSelectedAgent(preselect);
-          } else if (agentList.length > 0 && !selectedAgent) {
-            setSelectedAgent(agentList[0].id);
+          // Try direct ID match first, then role mapping
+          const resolvedAgent = preselect && agentList.some((a: Agent) => a.id === preselect)
+            ? preselect
+            : preselect && ROLE_TO_AGENT[preselect] && agentList.some((a: Agent) => a.id === ROLE_TO_AGENT[preselect])
+              ? ROLE_TO_AGENT[preselect]
+              : agentList.length > 0 ? agentList[0].id : "";
+          setSelectedAgent(resolvedAgent);
+
+          // Pre-fill prompt from query param
+          const promptParam = searchParams.get("prompt");
+          if (promptParam) {
+            setInput(promptParam);
           }
         }
       } catch (err) {

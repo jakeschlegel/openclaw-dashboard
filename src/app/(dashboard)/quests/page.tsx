@@ -168,7 +168,7 @@ function CapabilityModal({ cap, onClose }: { cap: Capability; onClose: () => voi
           <button
             onClick={() => {
               arcadeSound?.characterSelect();
-              window.location.href = `/chat?prompt=${encodeURIComponent(cap.examplePrompt)}`;
+              window.location.href = `/chat?agent=${encodeURIComponent(cap.suggestedRole)}&prompt=${encodeURIComponent(cap.examplePrompt)}`;
             }}
             className="arcade-btn arcade-btn-primary"
           >

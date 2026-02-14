@@ -8,6 +8,7 @@ const navItems = [
   { label: "Dashboard", href: "/", icon: "🏠" },
   { label: "Chat", href: "/chat", icon: "💬" },
   { label: "Cron Jobs", href: "/cron", icon: "⏰" },
+  { label: "Quest Board", href: "/quests", icon: "⚔️" },
   { label: "Agent Builder", href: "/builder", icon: "🕹️" },
 ];
 

@@ -25,6 +25,24 @@ function ChatContent() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Load chat history from localStorage when agent changes
+  useEffect(() => {
+    if (!selectedAgent) return;
+    try {
+      const saved = localStorage.getItem(`chat-history-${selectedAgent}`);
+      if (saved) setMessages(JSON.parse(saved));
+      else setMessages([]);
+    } catch { setMessages([]); }
+  }, [selectedAgent]);
+
+  // Save chat history to localStorage when messages change
+  useEffect(() => {
+    if (!selectedAgent || messages.length === 0) return;
+    try {
+      localStorage.setItem(`chat-history-${selectedAgent}`, JSON.stringify(messages.slice(-50)));
+    } catch {}
+  }, [messages, selectedAgent]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -93,7 +111,7 @@ function ChatContent() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentId: selectedAgent, message: userMessage.content }),
+        body: JSON.stringify({ agentId: selectedAgent, message: userMessage.content, history: [...messages, userMessage].slice(-6) }),
       });
       const data = await res.json();
       const assistantMessage: ChatMessage = {
@@ -156,11 +174,25 @@ function ChatContent() {
               ))}
             </select>
           )}
-          {currentAgent && (
-            <span className="ml-auto font-[family-name:var(--font-arcade)] text-[7px] opacity-40">
-              MODEL: {currentAgent.model?.split("/").pop()?.toUpperCase()}
-            </span>
-          )}
+          <div className="ml-auto flex items-center gap-3">
+            {messages.length > 0 && (
+              <button
+                onClick={() => {
+                  setMessages([]);
+                  if (selectedAgent) localStorage.removeItem(`chat-history-${selectedAgent}`);
+                }}
+                className="font-[family-name:var(--font-arcade)] text-[7px] px-2 py-1 pixel-border opacity-40 hover:opacity-100 transition-opacity"
+                style={{ borderColor: "var(--neon-red)40", color: "var(--neon-red)" }}
+              >
+                CLEAR
+              </button>
+            )}
+            {currentAgent && (
+              <span className="font-[family-name:var(--font-arcade)] text-[7px] opacity-40">
+                MODEL: {currentAgent.model?.split("/").pop()?.toUpperCase()}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Messages area */}

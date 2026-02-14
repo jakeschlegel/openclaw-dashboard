@@ -5,6 +5,16 @@ export const dynamic = "force-dynamic";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+// Agent identity context so spawned sessions know who they are
+const AGENT_CONTEXT: Record<string, string> = {
+  charlie: "You are Charlie 🐀, the main coding agent. You're resourceful, a bit chaotic, but surprisingly competent. You handle coding, general tasks, and wild card projects.",
+  dennis: "You are Dennis ⭐, the Chief of Staff agent. You handle delegation, coordination, strategy, and keeping things organized.",
+  mac: "You are Mac 🥋, the research and security agent. You handle research, security audits, intel gathering, and threat analysis.",
+  dee: "You are Dee 🦅, the content agent. You handle writing, blog posts, content creation, and creative projects.",
+  frank: "You are Frank 🗑️, the DevOps agent. You handle infrastructure, deployment, server management, and automation.",
+  cricket: "You are Cricket 🦗, the todos agent. You handle task capture, todo lists, reminders, and tracking action items.",
+};
+
 function extractAssistantReply(data: any): string | null {
   const messages = data?.result?.details?.messages;
   if (!Array.isArray(messages)) return null;
@@ -26,7 +36,7 @@ function extractAssistantReply(data: any): string | null {
 
 export async function POST(request: NextRequest) {
   try {
-    const { agentId, message } = await request.json();
+    const { agentId, message, history } = await request.json();
 
     if (!agentId || !message) {
       return NextResponse.json(
@@ -35,6 +45,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Build task with identity context and recent history
+    const identity = AGENT_CONTEXT[agentId] || `You are the ${agentId} agent.`;
+    
+    let taskParts = [identity];
+    
+    // Include recent history for conversational continuity (last 6 messages)
+    if (history && Array.isArray(history) && history.length > 0) {
+      const recent = history.slice(-6);
+      const historyStr = recent
+        .map((m: any) => `${m.role === "user" ? "User" : "You"}: ${m.content}`)
+        .join("\n");
+      taskParts.push(`Recent conversation:\n${historyStr}`);
+    }
+    
+    taskParts.push(`User's message: ${message}`);
+
+    const task = taskParts.join("\n\n");
+
     // Spawn a session via the gateway
     const data: any = await gateway({
       method: "POST",
@@ -42,7 +70,7 @@ export async function POST(request: NextRequest) {
       body: {
         tool: "sessions_spawn",
         args: {
-          task: message,
+          task,
           agentId,
         },
       },
@@ -57,7 +85,7 @@ export async function POST(request: NextRequest) {
         await new Promise((r) => setTimeout(r, 2000));
 
         try {
-          const history: any = await gateway({
+          const historyRes: any = await gateway({
             method: "POST",
             path: "/tools/invoke",
             body: {
@@ -70,12 +98,9 @@ export async function POST(request: NextRequest) {
             },
           });
 
-          const reply = extractAssistantReply(history);
+          const reply = extractAssistantReply(historyRes);
           if (reply) {
-            return NextResponse.json({
-              response: reply,
-              agentId,
-            });
+            return NextResponse.json({ response: reply, agentId });
           }
         } catch {
           // Session might not be ready yet
@@ -83,20 +108,17 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json({
-        response:
-          "Message sent to agent. The response is taking longer than expected — check Telegram for the reply.",
+        response: "Message sent to agent. The response is taking longer than expected — check Telegram for the reply.",
         agentId,
       });
     }
 
-    return NextResponse.json({
-      response: "Message sent to agent.",
-      agentId,
-    });
+    return NextResponse.json({ response: "Message sent to agent.", agentId });
   } catch (error) {
     console.error("Chat API error:", error);
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unknown error" },
+      { status: 500 }
+    );
   }
 }

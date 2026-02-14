@@ -1,19 +1,20 @@
 @import "tailwindcss";
+@import "../styles/arcade.css";
 
 @theme inline {
-  --color-bg: #0A0A0B;
-  --color-surface: #1A1A1F;
-  --color-surface-hover: #222228;
-  --color-border: #2A2A35;
-  --color-accent: #E5484D;
-  --color-accent-hover: #CC3E42;
+  --color-bg: #0a0a0f;
+  --color-surface: #12121a;
+  --color-surface-hover: #1a1a25;
+  --color-border: #1e1e2e;
+  --color-accent: #00FFFF;
+  --color-accent-hover: #00E0E0;
   --color-text-primary: #E8E8ED;
-  --color-text-secondary: #8B8B9E;
-  --color-success: #4ADE80;
-  --color-warning: #FBBF24;
-  --color-error: #F87171;
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
+  --color-text-secondary: #6B6B8E;
+  --color-success: #39FF14;
+  --color-warning: #FFD700;
+  --color-error: #FF0040;
+  --font-sans: 'VT323', monospace;
+  --font-mono: 'VT323', monospace;
 }
 
 * {
@@ -25,34 +26,37 @@ body {
   background: var(--color-bg);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
+  font-size: 18px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar styling */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
-  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: var(--color-bg);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-secondary);
+  background: var(--neon-cyan);
+  opacity: 0.3;
 }
 
-/* Toast animation */
-@keyframes slideIn {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+/* Range slider arcade style */
+input[type="range"] {
+  -webkit-appearance: none;
+  height: 12px;
+  background: rgba(255,255,255,0.05);
+  outline: none;
+  border: 1px solid rgba(255,255,255,0.1);
 }
-@keyframes slideOut {
-  from { transform: translateX(0); opacity: 1; }
-  to { transform: translateX(100%); opacity: 0; }
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 18px;
+  background: var(--neon-cyan);
+  cursor: pointer;
+  box-shadow: 0 0 6px var(--neon-cyan);
 }
-.toast-enter { animation: slideIn 200ms ease-out; }
-.toast-exit { animation: slideOut 200ms ease-in; }

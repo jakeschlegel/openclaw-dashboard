@@ -7,16 +7,31 @@ interface StatsCardProps {
   accent?: boolean;
 }
 
+const LABEL_COLORS: Record<string, string> = {
+  "Agents": "var(--neon-cyan)",
+  "Active": "var(--neon-green)",
+  "Cron Jobs": "var(--neon-magenta)",
+  "Active Jobs": "var(--neon-yellow)",
+};
+
 export default function StatsCard({ label, value, icon, accent }: StatsCardProps) {
+  const color = LABEL_COLORS[label] || (accent ? "var(--neon-green)" : "var(--neon-cyan)");
+
   return (
-    <div className="p-4 bg-surface border border-border rounded-[6px]">
+    <div
+      className="p-4 pixel-border"
+      style={{ borderColor: `${color}40`, backgroundColor: "rgba(255,255,255,0.02)" }}
+    >
       <div className="flex items-center justify-between mb-2">
-        <span className="text-text-secondary text-[12px] font-medium uppercase tracking-wider">
+        <span className="font-[family-name:var(--font-arcade)] text-[8px] uppercase tracking-wider" style={{ color: `${color}80` }}>
           {label}
         </span>
-        <span className="text-text-secondary">{icon}</span>
+        <span style={{ color: `${color}60` }}>{icon}</span>
       </div>
-      <p className={`text-2xl font-semibold ${accent ? "text-accent" : "text-text-primary"}`}>
+      <p
+        className="text-4xl font-[family-name:var(--font-terminal)]"
+        style={{ color, textShadow: `0 0 10px ${color}` }}
+      >
         {value}
       </p>
     </div>

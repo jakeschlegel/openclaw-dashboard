@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import AgentCard from "@/components/AgentCard";
 import StatsCard from "@/components/StatsCard";
 import PageHeader from "@/components/PageHeader";
@@ -66,9 +67,9 @@ export default function DashboardPage() {
   const activeCronJobs = cronJobs.filter((j) => j.enabled).length;
 
   return (
-    <>
+    <div className="arcade-grid min-h-screen -m-6 lg:-m-8 -mt-14 lg:-mt-8 p-6 lg:p-8">
       <PageHeader
-        title="Dashboard"
+        title="Command Center"
         description="Overview of your OpenClaw agents and jobs"
       />
 
@@ -77,46 +78,38 @@ export default function DashboardPage() {
         <StatsCard
           label="Agents"
           value={agents.length}
-          icon={
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          }
+          icon={<span className="text-lg">👥</span>}
         />
         <StatsCard
           label="Active"
           value={activeAgents}
           accent
-          icon={
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          }
+          icon={<span className="text-lg">⚡</span>}
         />
         <StatsCard
           label="Cron Jobs"
           value={cronJobs.length}
-          icon={
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          }
+          icon={<span className="text-lg">⏰</span>}
         />
         <StatsCard
           label="Active Jobs"
           value={activeCronJobs}
           accent
-          icon={
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          }
+          icon={<span className="text-lg">✅</span>}
         />
       </div>
 
-      {/* Agents Grid */}
-      <div className="mb-2">
-        <h2 className="text-[15px] font-semibold text-text-primary mb-4">Agents</h2>
+      {/* Agents */}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-[family-name:var(--font-arcade)] text-[11px] neon-cyan">
+          AGENTS
+        </h2>
+        <Link
+          href="/builder"
+          className="arcade-btn arcade-btn-secondary text-[8px]! px-3! py-1.5!"
+        >
+          🕹️ NEW AGENT
+        </Link>
       </div>
 
       {agents.length === 0 ? (
@@ -131,6 +124,6 @@ export default function DashboardPage() {
           ))}
         </div>
       )}
-    </>
+    </div>
   );
 }

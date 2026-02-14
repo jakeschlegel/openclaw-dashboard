@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { gateway } from "@/lib/gateway";
 
 export const dynamic = "force-dynamic";
 
@@ -31,157 +30,42 @@ function buildSoulMd(agent: DeployAgent): string {
   const humor = p.humor > 60 ? "frequently funny, loves jokes" : p.humor < 30 ? "serious and focused" : "occasional humor";
   const risk = p.risk > 60 ? "bold, willing to take risks" : p.risk < 30 ? "careful and cautious" : "measured risk-taker";
 
-  return `# SOUL.md — ${agent.characterName}
-
-## Identity
-- **Name:** ${agent.name}
-- **Character:** ${agent.characterName}
-- **Role:** ${agent.role}
-- **Emoji:** ${agent.emoji}
-- **Theme:** ${agent.themeId}
-
-## Personality
-- **Tone:** ${tone}
-- **Communication:** ${verbose}
-- **Initiative:** ${initiative}
-- **Formality:** ${formality}
-- **Humor:** ${humor}
-- **Risk Tolerance:** ${risk}
-
-## Core Template
-${agent.soulTemplate}
-
-## Guidelines
-- Stay in character
-- Be genuinely helpful
-- Use your unique perspective to approach problems
-- Actions speak louder than words
-`;
+  return `# SOUL.md — ${agent.characterName}\n\n## Identity\n- **Name:** ${agent.name}\n- **Character:** ${agent.characterName}\n- **Role:** ${agent.role}\n- **Emoji:** ${agent.emoji}\n- **Theme:** ${agent.themeId}\n\n## Personality\n- **Tone:** ${tone}\n- **Communication:** ${verbose}\n- **Initiative:** ${initiative}\n- **Formality:** ${formality}\n- **Humor:** ${humor}\n- **Risk Tolerance:** ${risk}\n\n## Core Template\n${agent.soulTemplate}\n\n## Guidelines\n- Stay in character\n- Be genuinely helpful\n- Use your unique perspective to approach problems\n- Actions speak louder than words\n`;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { agents, themeId }: { agents: DeployAgent[]; themeId: string } = await request.json();
+    const { agents }: { agents: DeployAgent[] } = await request.json();
 
     if (!agents || !Array.isArray(agents) || agents.length === 0) {
       return NextResponse.json({ error: "No agents to deploy" }, { status: 400 });
     }
 
-    // Read current config file via gateway exec
-    const configReadRes: any = await gateway({
-      method: "POST",
-      path: "/tools/invoke",
-      body: {
-        tool: "exec",
-        args: { command: "cat /Users/jakeschlegel86/.openclaw/openclaw.json" },
-      },
-    });
-
-    let currentConfig: any;
-    try {
-      // Extract stdout from the exec result
-      const stdout = configReadRes?.result?.stdout || configReadRes?.stdout || 
-        (typeof configReadRes === "string" ? configReadRes : JSON.stringify(configReadRes));
-      currentConfig = typeof stdout === "string" ? JSON.parse(stdout) : stdout;
-    } catch {
-      return NextResponse.json({ error: "Could not parse gateway config" }, { status: 500 });
-    }
-
-    if (!currentConfig?.agents) {
-      return NextResponse.json({ error: "Invalid gateway config structure" }, { status: 500 });
-    }
-
-    // Build new agent entries
-    const existingIds = new Set((currentConfig.agents?.list || []).map((a: any) => a.id));
-    const newAgentConfigs: any[] = [];
-    const soulFiles: { agentId: string; content: string }[] = [];
-
-    for (const agent of agents) {
+    // Generate agent configs and SOUL.md content
+    const generatedAgents = agents.map((agent) => {
       const agentId = agent.name.toLowerCase().replace(/[^a-z0-9]/g, "-");
-      if (existingIds.has(agentId)) continue;
-
-      newAgentConfigs.push({
+      return {
         id: agentId,
-        name: agentId,
-        workspace: `/Users/jakeschlegel86/clawd-agents/${agentId}`,
-        agentDir: `/Users/jakeschlegel86/.openclaw/agents/${agentId}/agent`,
-        model: "anthropic/claude-opus-4-6",
-      });
-
-      soulFiles.push({ agentId, content: buildSoulMd(agent) });
-    }
-
-    if (newAgentConfigs.length === 0) {
-      return NextResponse.json({ success: true, message: "All agents already exist", deployed: 0 });
-    }
-
-    // Create directories and write SOUL.md files
-    for (const soul of soulFiles) {
-      await gateway({
-        method: "POST",
-        path: "/tools/invoke",
-        body: {
-          tool: "exec",
-          args: { command: `mkdir -p /Users/jakeschlegel86/clawd-agents/${soul.agentId} /Users/jakeschlegel86/.openclaw/agents/${soul.agentId}/agent` },
+        name: agent.characterName,
+        emoji: agent.emoji,
+        role: agent.role,
+        soulMd: buildSoulMd(agent),
+        config: {
+          id: agentId,
+          name: agentId,
+          model: "anthropic/claude-opus-4-6",
         },
-      }).catch(() => {});
-
-      await gateway({
-        method: "POST",
-        path: "/tools/invoke",
-        body: {
-          tool: "write",
-          args: {
-            path: `/Users/jakeschlegel86/clawd-agents/${soul.agentId}/SOUL.md`,
-            content: soul.content,
-          },
-        },
-      }).catch(() => {});
-
-      await gateway({
-        method: "POST",
-        path: "/tools/invoke",
-        body: {
-          tool: "write",
-          args: {
-            path: `/Users/jakeschlegel86/clawd-agents/${soul.agentId}/AGENTS.md`,
-            content: `# AGENTS.md\n\nThis is the workspace for ${soul.agentId}.\n\nSee SOUL.md for personality and role.\n`,
-          },
-        },
-      }).catch(() => {});
-    }
-
-    // Update config: add new agents to list and write back
-    currentConfig.agents.list = [...(currentConfig.agents.list || []), ...newAgentConfigs];
-    const updatedConfigStr = JSON.stringify(currentConfig, null, 2);
-
-    await gateway({
-      method: "POST",
-      path: "/tools/invoke",
-      body: {
-        tool: "write",
-        args: {
-          path: "/Users/jakeschlegel86/.openclaw/openclaw.json",
-          content: updatedConfigStr,
-        },
-      },
+      };
     });
 
-    // Restart gateway to pick up new config
-    await gateway({
-      method: "POST",
-      path: "/tools/invoke",
-      body: {
-        tool: "exec",
-        args: { command: "openclaw gateway restart" },
-      },
-    }).catch(() => {}); // May timeout due to restart
-
+    // For Phase 1: Return the generated configs for the user
+    // The dashboard chat with Charlie can handle the actual deployment
     return NextResponse.json({
       success: true,
-      message: `Deployed ${newAgentConfigs.length} new agent(s). Gateway restarting...`,
-      deployed: newAgentConfigs.length,
-      agentIds: newAgentConfigs.map((a) => a.id),
+      message: `Generated ${generatedAgents.length} agent configuration(s)`,
+      deployed: generatedAgents.length,
+      agentIds: generatedAgents.map((a) => a.id),
+      agents: generatedAgents,
     });
   } catch (error) {
     console.error("Deploy API error:", error);

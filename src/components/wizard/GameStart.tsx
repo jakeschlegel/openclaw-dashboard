@@ -132,14 +132,12 @@ export function GameStart() {
           </div>
 
           <ArcadeText glow="cyan" size="sm" as="p" className="mt-4 opacity-60">
-            {deployResult?.deployed || state.selectedAgents.length} AGENTS DEPLOYED TO GATEWAY
+            {deployResult?.deployed || state.selectedAgents.length} AGENT PROFILES GENERATED
           </ArcadeText>
 
-          {deployResult?.deployed === 0 && (
-            <div className="font-[family-name:var(--font-terminal)] text-lg opacity-50" style={{ color: "var(--neon-yellow)" }}>
-              All agents already existed — configs untouched
-            </div>
-          )}
+          <div className="font-[family-name:var(--font-terminal)] text-lg opacity-50 max-w-md text-center" style={{ color: "var(--neon-yellow)" }}>
+            Your agents are configured! Chat with them using the Comms Channel — each one has its own personality and skills.
+          </div>
 
           <div className="pixel-border px-6 py-3 mt-4" style={{ borderColor: "var(--neon-yellow)" }}>
             <ArcadeText glow="yellow" size="xs">
@@ -147,15 +145,26 @@ export function GameStart() {
             </ArcadeText>
           </div>
 
-          <button
-            onClick={() => {
-              arcadeSound?.buttonClick();
-              window.location.href = "/";
-            }}
-            className="arcade-btn arcade-btn-primary mt-8"
-          >
-            GO TO DASHBOARD ►
-          </button>
+          <div className="flex gap-4 mt-8">
+            <button
+              onClick={() => {
+                arcadeSound?.buttonClick();
+                window.location.href = "/chat";
+              }}
+              className="arcade-btn arcade-btn-primary"
+            >
+              💬 START CHATTING ►
+            </button>
+            <button
+              onClick={() => {
+                arcadeSound?.buttonClick();
+                window.location.href = "/";
+              }}
+              className="arcade-btn arcade-btn-secondary"
+            >
+              DASHBOARD
+            </button>
+          </div>
         </div>
       )}
 

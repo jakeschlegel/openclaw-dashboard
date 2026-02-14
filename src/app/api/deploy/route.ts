@@ -67,14 +67,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No agents to deploy" }, { status: 400 });
     }
 
-    // Get current config
-    const currentConfig: any = await gateway({
-      method: "GET",
-      path: "/config",
+    // Read current config file via gateway exec
+    const configReadRes: any = await gateway({
+      method: "POST",
+      path: "/tools/invoke",
+      body: {
+        tool: "exec",
+        args: { command: "cat /Users/jakeschlegel86/.openclaw/openclaw.json" },
+      },
     });
 
-    if (!currentConfig) {
-      return NextResponse.json({ error: "Could not fetch gateway config" }, { status: 500 });
+    let currentConfig: any;
+    try {
+      // Extract stdout from the exec result
+      const stdout = configReadRes?.result?.stdout || configReadRes?.stdout || 
+        (typeof configReadRes === "string" ? configReadRes : JSON.stringify(configReadRes));
+      currentConfig = typeof stdout === "string" ? JSON.parse(stdout) : stdout;
+    } catch {
+      return NextResponse.json({ error: "Could not parse gateway config" }, { status: 500 });
+    }
+
+    if (!currentConfig?.agents) {
+      return NextResponse.json({ error: "Invalid gateway config structure" }, { status: 500 });
     }
 
     // Build new agent entries
@@ -84,10 +98,7 @@ export async function POST(request: NextRequest) {
 
     for (const agent of agents) {
       const agentId = agent.name.toLowerCase().replace(/[^a-z0-9]/g, "-");
-
-      if (existingIds.has(agentId)) {
-        continue; // Skip already-existing agents
-      }
+      if (existingIds.has(agentId)) continue;
 
       newAgentConfigs.push({
         id: agentId,
@@ -97,35 +108,24 @@ export async function POST(request: NextRequest) {
         model: "anthropic/claude-opus-4-6",
       });
 
-      soulFiles.push({
-        agentId,
-        content: buildSoulMd(agent),
-      });
+      soulFiles.push({ agentId, content: buildSoulMd(agent) });
     }
 
     if (newAgentConfigs.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: "All agents already exist",
-        deployed: 0,
-      });
+      return NextResponse.json({ success: true, message: "All agents already exist", deployed: 0 });
     }
 
-    // Create agent directories and SOUL.md files via gateway tools
+    // Create directories and write SOUL.md files
     for (const soul of soulFiles) {
-      // Create workspace dir
       await gateway({
         method: "POST",
         path: "/tools/invoke",
         body: {
           tool: "exec",
-          args: {
-            command: `mkdir -p /Users/jakeschlegel86/clawd-agents/${soul.agentId} /Users/jakeschlegel86/.openclaw/agents/${soul.agentId}/agent`,
-          },
+          args: { command: `mkdir -p /Users/jakeschlegel86/clawd-agents/${soul.agentId} /Users/jakeschlegel86/.openclaw/agents/${soul.agentId}/agent` },
         },
       }).catch(() => {});
 
-      // Write SOUL.md
       await gateway({
         method: "POST",
         path: "/tools/invoke",
@@ -138,7 +138,6 @@ export async function POST(request: NextRequest) {
         },
       }).catch(() => {});
 
-      // Write AGENTS.md
       await gateway({
         method: "POST",
         path: "/tools/invoke",
@@ -152,23 +151,35 @@ export async function POST(request: NextRequest) {
       }).catch(() => {});
     }
 
-    // Patch gateway config to add new agents
-    const updatedList = [...(currentConfig.agents?.list || []), ...newAgentConfigs];
+    // Update config: add new agents to list and write back
+    currentConfig.agents.list = [...(currentConfig.agents.list || []), ...newAgentConfigs];
+    const updatedConfigStr = JSON.stringify(currentConfig, null, 2);
 
     await gateway({
-      method: "PATCH",
-      path: "/config",
+      method: "POST",
+      path: "/tools/invoke",
       body: {
-        agents: {
-          ...currentConfig.agents,
-          list: updatedList,
+        tool: "write",
+        args: {
+          path: "/Users/jakeschlegel86/.openclaw/openclaw.json",
+          content: updatedConfigStr,
         },
       },
     });
 
+    // Restart gateway to pick up new config
+    await gateway({
+      method: "POST",
+      path: "/tools/invoke",
+      body: {
+        tool: "exec",
+        args: { command: "openclaw gateway restart" },
+      },
+    }).catch(() => {}); // May timeout due to restart
+
     return NextResponse.json({
       success: true,
-      message: `Deployed ${newAgentConfigs.length} new agent(s)`,
+      message: `Deployed ${newAgentConfigs.length} new agent(s). Gateway restarting...`,
       deployed: newAgentConfigs.length,
       agentIds: newAgentConfigs.map((a) => a.id),
     });

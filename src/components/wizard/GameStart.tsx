@@ -1,16 +1,54 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useWizard } from "@/lib/wizard-state";
 import { ArcadeText } from "@/components/arcade/ArcadeText";
 import { arcadeSound } from "@/lib/sound";
 
-type Phase = "countdown" | "game-start" | "deploying" | "stage-clear";
+type Phase = "countdown" | "game-start" | "deploying" | "stage-clear" | "error";
 
 export function GameStart() {
   const { state } = useWizard();
   const [phase, setPhase] = useState<Phase>("countdown");
   const [count, setCount] = useState(3);
+  const [deployResult, setDeployResult] = useState<{ deployed: number; agentIds?: string[] } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const deploy = useCallback(async () => {
+    if (!state.theme) return;
+
+    try {
+      const agents = state.selectedAgents.map((a) => ({
+        name: a.character.name.split(" ")[0].toLowerCase(),
+        role: a.role,
+        emoji: a.character.emoji,
+        personality: a.personality,
+        soulTemplate: a.character.soulTemplate,
+        characterName: a.character.name,
+        themeId: state.theme!.id,
+      }));
+
+      const res = await fetch("/api/deploy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agents, themeId: state.theme.id }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Deploy failed");
+      }
+
+      setDeployResult(data);
+      setPhase("stage-clear");
+      arcadeSound?.deploySuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Deploy failed");
+      setPhase("error");
+      arcadeSound?.errorBuzz();
+    }
+  }, [state]);
 
   useEffect(() => {
     if (phase === "countdown") {
@@ -25,19 +63,13 @@ export function GameStart() {
     }
 
     if (phase === "game-start") {
-      const t = setTimeout(() => setPhase("deploying"), 1500);
-      return () => clearTimeout(t);
-    }
-
-    if (phase === "deploying") {
-      // Simulate deploy
       const t = setTimeout(() => {
-        setPhase("stage-clear");
-        arcadeSound?.deploySuccess();
-      }, 2000);
+        setPhase("deploying");
+        deploy();
+      }, 1500);
       return () => clearTimeout(t);
     }
-  }, [phase, count]);
+  }, [phase, count, deploy]);
 
   return (
     <div className="min-h-screen arcade-grid flex flex-col items-center justify-center">
@@ -76,6 +108,9 @@ export function GameStart() {
               </div>
             ))}
           </div>
+          <div className="font-[family-name:var(--font-terminal)] text-lg opacity-40">
+            Writing SOUL.md files... Updating gateway config...
+          </div>
         </div>
       )}
 
@@ -97,10 +132,15 @@ export function GameStart() {
           </div>
 
           <ArcadeText glow="cyan" size="sm" as="p" className="mt-4 opacity-60">
-            {state.selectedAgents.length} AGENTS DEPLOYED SUCCESSFULLY
+            {deployResult?.deployed || state.selectedAgents.length} AGENTS DEPLOYED TO GATEWAY
           </ArcadeText>
 
-          {/* Achievement placeholder */}
+          {deployResult?.deployed === 0 && (
+            <div className="font-[family-name:var(--font-terminal)] text-lg opacity-50" style={{ color: "var(--neon-yellow)" }}>
+              All agents already existed — configs untouched
+            </div>
+          )}
+
           <div className="pixel-border px-6 py-3 mt-4" style={{ borderColor: "var(--neon-yellow)" }}>
             <ArcadeText glow="yellow" size="xs">
               🏆 ACHIEVEMENT UNLOCKED: FIRST BLOOD
@@ -116,6 +156,40 @@ export function GameStart() {
           >
             GO TO DASHBOARD ►
           </button>
+        </div>
+      )}
+
+      {/* Error */}
+      {phase === "error" && (
+        <div className="flex flex-col items-center gap-6 stage-enter">
+          <div className="pixel-border px-12 py-6" style={{ borderColor: "var(--neon-red)", boxShadow: "0 0 20px var(--neon-red)" }}>
+            <ArcadeText glow="magenta" size="lg" as="div">
+              GAME OVER
+            </ArcadeText>
+          </div>
+
+          <div className="font-[family-name:var(--font-terminal)] text-xl" style={{ color: "var(--neon-red)" }}>
+            {error}
+          </div>
+
+          <div className="flex gap-4 mt-4">
+            <button
+              onClick={() => {
+                setPhase("countdown");
+                setCount(3);
+                setError(null);
+              }}
+              className="arcade-btn arcade-btn-primary"
+            >
+              CONTINUE? (RETRY)
+            </button>
+            <button
+              onClick={() => window.location.href = "/"}
+              className="arcade-btn arcade-btn-secondary"
+            >
+              QUIT
+            </button>
+          </div>
         </div>
       )}
     </div>

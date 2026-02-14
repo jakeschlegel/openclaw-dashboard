@@ -3,6 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import "@/styles/arcade.css";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -17,47 +18,56 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const result = await signIn("credentials", {
-        username,
-        password,
-        redirect: false,
-      });
-
+      const result = await signIn("credentials", { username, password, redirect: false });
       if (result?.error) {
-        setError("Invalid username or password");
+        setError("INVALID CREDENTIALS");
       } else {
         router.push("/");
         router.refresh();
       }
     } catch {
-      setError("An unexpected error occurred");
+      setError("SYSTEM ERROR");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg px-4">
-      <div className="w-full max-w-[380px]">
+    <div className="min-h-screen flex items-center justify-center arcade-grid px-4" style={{ backgroundColor: "var(--arcade-bg)" }}>
+      <div className="w-full max-w-[420px]">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-[6px] bg-accent flex items-center justify-center text-white font-bold text-lg">
+        <div className="flex flex-col items-center gap-3 mb-8">
+          <div
+            className="w-16 h-16 flex items-center justify-center font-[family-name:var(--font-arcade)] text-[14px]"
+            style={{
+              border: "2px solid var(--neon-cyan)",
+              color: "var(--neon-cyan)",
+              boxShadow: "0 0 20px var(--neon-cyan)40, inset 0 0 10px var(--neon-cyan)10",
+            }}
+          >
             OC
           </div>
-          <span className="text-text-primary font-semibold text-xl">OpenClaw</span>
+          <div className="font-[family-name:var(--font-arcade)] text-[12px] neon-cyan">
+            OPENCLAW
+          </div>
+          <div className="font-[family-name:var(--font-terminal)] text-lg opacity-40">
+            COMMAND CENTER v2.0
+          </div>
         </div>
 
         {/* Card */}
-        <div className="bg-surface border border-border rounded-[6px] p-6">
-          <h1 className="text-[16px] font-semibold text-text-primary mb-1">Sign in</h1>
-          <p className="text-[13px] text-text-secondary mb-6">
-            Enter your credentials to access the dashboard
+        <div className="pixel-border p-6" style={{ borderColor: "var(--neon-cyan)40", backgroundColor: "rgba(0,0,0,0.4)" }}>
+          <div className="font-[family-name:var(--font-arcade)] text-[10px] neon-cyan mb-1">
+            ★ ACCESS TERMINAL ★
+          </div>
+          <p className="font-[family-name:var(--font-terminal)] text-lg text-text-secondary mb-6">
+            Enter credentials to proceed
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="username" className="block text-[13px] font-medium text-text-secondary mb-1.5">
-                Username
+              <label htmlFor="username" className="block font-[family-name:var(--font-arcade)] text-[7px] opacity-50 mb-2">
+                USERNAME
               </label>
               <input
                 id="username"
@@ -66,14 +76,15 @@ export default function LoginPage() {
                 onChange={(e) => setUsername(e.target.value)}
                 required
                 autoFocus
-                className="w-full px-3 py-2 bg-bg border border-border rounded-[6px] text-[14px] text-text-primary placeholder-text-secondary focus:outline-none focus:border-accent transition-colors"
-                placeholder="Enter username"
+                className="w-full px-4 py-3 pixel-border font-[family-name:var(--font-terminal)] text-xl focus:outline-none"
+                style={{ backgroundColor: "rgba(0,0,0,0.5)", borderColor: "var(--neon-cyan)30", color: "var(--neon-cyan)" }}
+                placeholder="PLAYER 1"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-[13px] font-medium text-text-secondary mb-1.5">
-                Password
+              <label htmlFor="password" className="block font-[family-name:var(--font-arcade)] text-[7px] opacity-50 mb-2">
+                PASSWORD
               </label>
               <input
                 id="password"
@@ -81,29 +92,33 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-3 py-2 bg-bg border border-border rounded-[6px] text-[14px] text-text-primary placeholder-text-secondary focus:outline-none focus:border-accent transition-colors"
-                placeholder="Enter password"
+                className="w-full px-4 py-3 pixel-border font-[family-name:var(--font-terminal)] text-xl focus:outline-none"
+                style={{ backgroundColor: "rgba(0,0,0,0.5)", borderColor: "var(--neon-cyan)30", color: "var(--neon-cyan)" }}
+                placeholder="••••••••"
               />
             </div>
 
             {error && (
-              <div className="text-[13px] text-error bg-error/10 border border-error/20 rounded-[6px] px-3 py-2">
-                {error}
+              <div
+                className="font-[family-name:var(--font-arcade)] text-[9px] px-3 py-2 pixel-border"
+                style={{ color: "var(--neon-red)", borderColor: "var(--neon-red)40", backgroundColor: "rgba(255,0,64,0.08)" }}
+              >
+                ✕ {error}
               </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 bg-accent text-white text-[14px] font-medium rounded-[6px] hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full arcade-btn arcade-btn-primary disabled:opacity-30 disabled:cursor-not-allowed py-3!"
             >
-              {loading ? "Signing in…" : "Sign in"}
+              {loading ? "AUTHENTICATING..." : "INSERT COIN →"}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-[12px] text-text-secondary mt-4">
-          OpenClaw Dashboard
+        <p className="text-center font-[family-name:var(--font-terminal)] text-base opacity-20 mt-4">
+          © 2026 OPENCLAW SYSTEMS
         </p>
       </div>
     </div>

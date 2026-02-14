@@ -22,6 +22,8 @@ function ChatContent() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [agentsLoading, setAgentsLoading] = useState(true);
+  const [selectedModel, setSelectedModel] = useState("anthropic/claude-opus-4-6");
+  const [showModelInfo, setShowModelInfo] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -111,7 +113,7 @@ function ChatContent() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentId: selectedAgent, message: userMessage.content, history: [...messages, userMessage].slice(-6) }),
+        body: JSON.stringify({ agentId: selectedAgent, message: userMessage.content, history: [...messages, userMessage].slice(-6), model: selectedModel }),
       });
       const data = await res.json();
       const assistantMessage: ChatMessage = {
@@ -187,11 +189,77 @@ function ChatContent() {
                 CLEAR
               </button>
             )}
-            {currentAgent && (
-              <span className="font-[family-name:var(--font-arcade)] text-[7px] opacity-40">
-                MODEL: {currentAgent.model?.split("/").pop()?.toUpperCase()}
-              </span>
-            )}
+            <div className="relative">
+              <button
+                onClick={() => setShowModelInfo(!showModelInfo)}
+                className="flex items-center gap-1 font-[family-name:var(--font-arcade)] text-[7px] px-2 py-1 pixel-border transition-all"
+                style={{
+                  borderColor: "var(--neon-yellow)40",
+                  color: "var(--neon-yellow)",
+                  backgroundColor: showModelInfo ? "rgba(255,215,0,0.1)" : "transparent",
+                }}
+              >
+                MODEL: {selectedModel.split("/").pop()?.toUpperCase()} ▼
+              </button>
+              {showModelInfo && (
+                <div
+                  className="absolute right-0 top-full mt-2 w-80 z-50 pixel-border p-3 space-y-2"
+                  style={{ borderColor: "var(--neon-yellow)60", backgroundColor: "var(--arcade-bg)" }}
+                >
+                  {[
+                    {
+                      id: "anthropic/claude-opus-4-6",
+                      name: "OPUS 4",
+                      tier: "★★★",
+                      color: "#FFD700",
+                      desc: "Most capable. Best for complex coding, research, multi-step reasoning. Slower, higher cost.",
+                      best: "Hard quests, full-stack builds, deep analysis",
+                    },
+                    {
+                      id: "anthropic/claude-sonnet-4-5",
+                      name: "SONNET 4.5",
+                      tier: "★★☆",
+                      color: "#00FFFF",
+                      desc: "Great balance of speed and intelligence. Good for most tasks. Recommended default.",
+                      best: "Medium quests, writing, general coding, chat",
+                    },
+                    {
+                      id: "anthropic/claude-haiku-4-5",
+                      name: "HAIKU 4.5",
+                      tier: "★☆☆",
+                      color: "#39FF14",
+                      desc: "Fastest and cheapest. Great for simple tasks, quick answers, and high-volume work.",
+                      best: "Easy quests, quick lookups, simple Q&A, drafts",
+                    },
+                  ].map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => { setSelectedModel(m.id); setShowModelInfo(false); }}
+                      className="w-full text-left p-2 pixel-border transition-all"
+                      style={{
+                        borderColor: selectedModel === m.id ? `${m.color}80` : "rgba(255,255,255,0.08)",
+                        backgroundColor: selectedModel === m.id ? `${m.color}10` : "transparent",
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-[family-name:var(--font-arcade)] text-[8px]" style={{ color: m.color }}>
+                          {m.name}
+                        </span>
+                        <span className="font-[family-name:var(--font-arcade)] text-[8px]" style={{ color: m.color }}>
+                          {m.tier}
+                        </span>
+                      </div>
+                      <p className="font-[family-name:var(--font-terminal)] text-base opacity-60 mb-1">
+                        {m.desc}
+                      </p>
+                      <p className="font-[family-name:var(--font-arcade)] text-[6px] opacity-40">
+                        BEST FOR: {m.best.toUpperCase()}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

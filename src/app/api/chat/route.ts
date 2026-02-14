@@ -36,7 +36,7 @@ function extractAssistantReply(data: any): string | null {
 
 export async function POST(request: NextRequest) {
   try {
-    const { agentId, message, history } = await request.json();
+    const { agentId, message, history, model } = await request.json();
 
     if (!agentId || !message) {
       return NextResponse.json(
@@ -72,6 +72,7 @@ export async function POST(request: NextRequest) {
         args: {
           task,
           agentId,
+          ...(model ? { model } : {}),
         },
       },
     });

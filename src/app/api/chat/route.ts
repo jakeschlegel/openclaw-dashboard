@@ -5,32 +5,47 @@ export const dynamic = "force-dynamic";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-// Agent identity context so spawned sessions know who they are
+// Agent identity context
 const AGENT_CONTEXT: Record<string, string> = {
-  charlie: "You are Charlie 🐀, the main coding agent. You're resourceful, a bit chaotic, but surprisingly competent. You handle coding, general tasks, and wild card projects.",
-  dennis: "You are Dennis ⭐, the Chief of Staff agent. You handle delegation, coordination, strategy, and keeping things organized.",
-  mac: "You are Mac 🥋, the research and security agent. You handle research, security audits, intel gathering, and threat analysis.",
-  dee: "You are Dee 🦅, the content agent. You handle writing, blog posts, content creation, and creative projects.",
-  frank: "You are Frank 🗑️, the DevOps agent. You handle infrastructure, deployment, server management, and automation.",
-  cricket: "You are Cricket 🦗, the todos agent. You handle task capture, todo lists, reminders, and tracking action items.",
+  charlie: "You are Charlie 🐀, the main coding agent. You're resourceful, a bit chaotic, but surprisingly competent. You handle coding, general tasks, and wild card projects. Respond as Charlie.",
+  dennis: "You are Dennis ⭐, the Chief of Staff agent. You handle delegation, coordination, strategy, and keeping things organized. Respond as Dennis.",
+  mac: "You are Mac 🥋, the research and security agent. You handle research, security audits, intel gathering, and threat analysis. Respond as Mac.",
+  dee: "You are Dee 🦅, the content agent. You handle writing, blog posts, content creation, and creative projects. Respond as Dee.",
+  frank: "You are Frank 🗑️, the DevOps agent. You handle infrastructure, deployment, server management, and automation. Respond as Frank.",
+  cricket: "You are Cricket 🦗, the todos agent. You handle task capture, todo lists, reminders, and tracking action items. Respond as Cricket.",
 };
 
 function extractAssistantReply(data: any): string | null {
+  // Check in result.details.messages
   const messages = data?.result?.details?.messages;
-  if (!Array.isArray(messages)) return null;
-
-  const assistantMsgs = messages.filter((m: any) => m.role === "assistant");
-  if (assistantMsgs.length === 0) return null;
-
-  const lastMsg = assistantMsgs[assistantMsgs.length - 1];
-  if (typeof lastMsg.content === "string") return lastMsg.content;
-  if (Array.isArray(lastMsg.content)) {
-    return lastMsg.content
-      .filter((c: any) => c.type === "text")
-      .map((c: any) => c.text)
-      .join("")
-      .trim();
+  if (Array.isArray(messages)) {
+    const assistantMsgs = messages.filter((m: any) => m.role === "assistant");
+    if (assistantMsgs.length > 0) {
+      const lastMsg = assistantMsgs[assistantMsgs.length - 1];
+      if (typeof lastMsg.content === "string") return lastMsg.content;
+      if (Array.isArray(lastMsg.content)) {
+        return lastMsg.content
+          .filter((c: any) => c.type === "text")
+          .map((c: any) => c.text)
+          .join("")
+          .trim();
+      }
+    }
   }
+
+  // Check result.content directly
+  if (data?.result?.content) {
+    if (typeof data.result.content === "string") return data.result.content;
+    if (Array.isArray(data.result.content)) {
+      const text = data.result.content
+        .filter((c: any) => c.type === "text")
+        .map((c: any) => c.text)
+        .join("")
+        .trim();
+      if (text) return text;
+    }
+  }
+
   return null;
 }
 
@@ -46,10 +61,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Build task with identity context and recent history
-    const identity = AGENT_CONTEXT[agentId] || `You are the ${agentId} agent.`;
-    
+    const identity = AGENT_CONTEXT[agentId] || `You are the ${agentId} agent. Respond helpfully.`;
+
     let taskParts = [identity];
-    
+
     // Include recent history for conversational continuity (last 6 messages)
     if (history && Array.isArray(history) && history.length > 0) {
       const recent = history.slice(-6);
@@ -58,47 +73,39 @@ export async function POST(request: NextRequest) {
         .join("\n");
       taskParts.push(`Recent conversation:\n${historyStr}`);
     }
-    
-    taskParts.push(`User's message: ${message}`);
+
+    taskParts.push(`User's current message: ${message}\n\nRespond naturally and helpfully. Keep your response concise unless the task requires detail.`);
 
     const task = taskParts.join("\n\n");
 
-    // Spawn a session via the gateway
+    // Always spawn as default agent (no agentId restriction)
+    // The identity context handles personality
+    const spawnArgs: any = { task };
+    if (model) spawnArgs.model = model;
+
     const data: any = await gateway({
       method: "POST",
       path: "/tools/invoke",
       body: {
         tool: "sessions_spawn",
-        args: {
-          task,
-          agentId,
-          ...(model ? { model } : {}),
-        },
+        args: spawnArgs,
       },
     });
 
-    // Log the full response for debugging
-    console.log("Spawn response:", JSON.stringify(data, null, 2)?.slice(0, 2000));
+    console.log("Spawn response keys:", data ? Object.keys(data) : "null");
 
-    // Try to find childSessionKey in various response shapes
-    const sessionKey = data?.result?.details?.childSessionKey 
-      || data?.result?.childSessionKey
-      || data?.details?.childSessionKey
-      || data?.childSessionKey;
-
-    // Also check if the response already contains the reply directly
+    // Try to extract reply directly from spawn result
     const directReply = extractAssistantReply(data);
     if (directReply) {
       return NextResponse.json({ response: directReply, agentId });
     }
 
-    // Check if there's content in the result that IS the reply
-    if (data?.result?.content && typeof data.result.content === "string") {
-      return NextResponse.json({ response: data.result.content, agentId });
-    }
+    // Try to find childSessionKey
+    const sessionKey = data?.result?.details?.childSessionKey
+      || data?.result?.childSessionKey
+      || data?.details?.childSessionKey;
 
     if (sessionKey) {
-
       // Poll for the result (up to 90 seconds)
       const deadline = Date.now() + 90000;
       while (Date.now() < deadline) {
@@ -128,15 +135,22 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json({
-        response: "Message sent to agent. The response is taking longer than expected — check Telegram for the reply.",
+        response: "The agent is still thinking — this is taking longer than expected. Try again in a moment.",
         agentId,
       });
     }
 
-    // If we get here, the spawn didn't return expected data
-    console.error("Unexpected spawn response shape — no sessionKey found");
-    return NextResponse.json({ 
-      response: "Agent is processing your request. If no response appears, the agent may be busy — try again in a moment.",
+    // Last resort — check if there's any text content in the response
+    const anyText = JSON.stringify(data);
+    if (anyText.includes("forbidden")) {
+      return NextResponse.json({
+        response: "This agent isn't available for direct chat right now. Try Charlie instead!",
+        agentId,
+      });
+    }
+
+    return NextResponse.json({
+      response: "Agent is processing your request. If no response appears, try again in a moment.",
       agentId,
     });
   } catch (error) {

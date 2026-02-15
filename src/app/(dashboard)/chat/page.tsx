@@ -351,9 +351,14 @@ function ChatContent() {
               {loading ? "..." : "SEND ►"}
             </button>
           </div>
-          <p className="font-[family-name:var(--font-arcade)] text-[7px] opacity-30 mt-2">
-            ENTER TO SEND • SHIFT+ENTER FOR NEW LINE
-          </p>
+          <div className="flex items-center justify-between mt-2">
+            <p className="font-[family-name:var(--font-arcade)] text-[7px] opacity-30">
+              ENTER TO SEND • SHIFT+ENTER FOR NEW LINE
+            </p>
+            <p className="font-[family-name:var(--font-arcade)] text-[7px] opacity-30" style={{ color: "var(--neon-yellow)" }}>
+              ⚡ LITE MODE — FOR FULL AGENT POWERS (WEB SEARCH, FILES, BROWSER) USE TELEGRAM
+            </p>
+          </div>
         </div>
       </div>
     </div>
